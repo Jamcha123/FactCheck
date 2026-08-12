@@ -44,7 +44,7 @@ user: Enter Your UID From The AddUser Function After You Subscribed Via The Chec
 
 videoId: Your Youtube Video Id
 
-comments: How many Comments Do You Want To Fact Check Starting For Newest Aged To Oldest Aged Comment, Default Starting At 25
+comments: How many Comments Do You Want To Fact Check Starting For Newest Aged To Oldest Aged Comment, Default Starting At 2  5
 
 
 
