@@ -1,0 +1,10 @@
+{
+  "projects": {
+    "home": "scamhunter-9ddf5",
+    "default": "factchecker-e23f1",
+    "h": "factchecker-e23f1",
+    "d": "factchecker-e23f1"
+  },
+  "targets": {},
+  "etags": {}
+}
