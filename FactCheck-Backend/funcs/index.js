@@ -353,7 +353,7 @@ export const factCheck = functions.https.onRequest({cors: true, timeoutSeconds: 
 
     const videoLink = "https://www.googleapis.com/youtube/v3/videos"
 
-    const videoWebby = (await axios.get(videoLink, {params: {"key": "AIzaSyAMIdQp8B3O-Q_9mAhU4ZIk9tfBQmyI51E", "part": "snippet", "id": videoId}}))["data"]["items"][0]["snippet"]
+    const videoWebby = (await axios.get(videoLink, {params: {"key": process.env["GOOGLE"], "part": "snippet", "id": videoId}}))["data"]["items"][0]["snippet"]
 
     const url = "https://api.search.brave.com/res/v1/web/search?q=" + videoWebby["title"]
 
