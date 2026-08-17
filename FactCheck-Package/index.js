@@ -2,28 +2,23 @@ import axios from 'axios'
 
 
 export default class FactCheck{
-    constructor(options = {userkey: null}){
-        this.userkey = options.userkey
-    }
-
-    async getLogin(email, password){
-        const link = "https://adduser-z2v6b6ghoq-uc.a.run.app?email=" + email + "&password=" + password
-        
-        try{
-            const webby = (await axios.get(link))["data"]
-            return webby
-        } catch(err) {
-            return err
-        }
+    constructor(options = {customerUID: "empty"}){
+        this.customerUID = options.customerUID
     }
 
     async getCheckout(){
-        const link = "https://addcheckout-z2v6b6ghoq-uc.a.run.app?user=" + this.userkey
-        return link
+        const link = "https://addcheckoutlink-z2v6b6ghoq-uc.a.run.app"
+        const webby = (await axios.get(link))["data"]
+
+        return webby 
     }
 
     async getUsage(){
-        const link = "https://getusage-z2v6b6ghoq-uc.a.run.app?user=" + this.userkey
+        if(this.customerUID == "empty"){
+            throw new Error("customerUID is empty in the new FactCheck({customerUID: 'Your Customer UID'})\nYou can get your customer UID by subscribing to the FactCheck API for $0.05 per API call")
+        }
+
+        const link = "https://getusage-z2v6b6ghoq-uc.a.run.app?customer=" + this.customerUID
 
         try{
             const webby = (await axios.get(link))["data"]
@@ -34,7 +29,11 @@ export default class FactCheck{
     }
 
     async cancelSubscription(){
-        const link = "https://cancelsubscription-z2v6b6ghoq-uc.a.run.app?user=" + this.userkey
+        if(this.customerUID == "empty"){
+            throw new Error("customerUID is empty in the new FactCheck({customerUID: 'Your Customer UID'})\nYou can get your customer UID by subscribing to the FactCheck API for $0.05 per API call")
+        }
+
+        const link = "https://cancelsubscription-z2v6b6ghoq-uc.a.run.app?customer=" + this.customerUID
 
         try{
             const webby = (await axios.get(link))["data"]
@@ -44,19 +43,12 @@ export default class FactCheck{
         }
     }
 
-    async removeUser(){
-        const link = "https://removeuser-z2v6b6ghoq-uc.a.run.app?user=" + this.userkey
-
-        try{
-            const webby = (await axios.get(link))["data"]
-            return webby
-        } catch (err) {
-            return err
-        }
-    } 
-
     async getFactChecker(youtubeId, maxComments){
-        const link = "https://factcheck-z2v6b6ghoq-uc.a.run.app?user=" + this.userkey + "&videoId=" + youtubeId + "&comments=" + maxComments
+        if(this.customerUID == "empty"){
+            throw new Error("customerUID is empty in the new FactCheck({customerUID: 'Your Customer UID'})\nYou can get your customer UID by subscribing to the FactCheck API for $0.05 per API call")
+        }
+
+        const link = "https://factcheck-z2v6b6ghoq-uc.a.run.app?customer=" + this.customerUID + "&videoId=" + youtubeId + "&comments=" + maxComments
         
         console.log("\nLoading..... Please Wait, Might Take Some Time\n")
         console.log("\n" + link + "\n")
@@ -68,6 +60,4 @@ export default class FactCheck{
             return err
         }
     }
-
-
 }

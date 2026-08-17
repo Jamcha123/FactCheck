@@ -1,6 +1,6 @@
 {
-  "name": "factcheck",
-  "version": "1.0.0",
+  "name": "factcheckjs",
+  "version": "1.0.12",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -9,13 +9,19 @@
   "repository": {
     "url": "https://github.com/Jamcha123/FactCheck"
   },
-  "keywords": [],
+  "keywords": [
+    "youtube",
+    "fact check",
+    "fake news",
+    "web search with brave api"
+  ],
   "type": "module",
   "author": "",
   "license": "ISC",
   "dependencies": {
     "axios": "^1.19.0",
     "cheerio": "^1.2.0",
+    "factcheckjs": "^1.0.11",
     "puppeteer": "^25.6.0"
   }
 }
