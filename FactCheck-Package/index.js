@@ -22,7 +22,7 @@ export default class FactCheck{
 
         try{
             const webby = (await axios.get(link))["data"]
-            return webby
+            return {invoice: webby["invoice"], balance: webby["amount"]}
         } catch (err) {
             return err
         }
@@ -57,6 +57,19 @@ export default class FactCheck{
             const webby = (await axios.get(link))["data"]
             return webby
         } catch (err) {
+            return err
+        }
+    }
+
+    async getVideoSummarizer(videoId){
+        const link = "https://videocallsummary-z2v6b6ghoq-uc.a.run.app?customer=" + this.customerUID + "&videoId=" + videoId
+        
+        console.log("\nLoading..... Please Wait, Might Take Some Time\n")
+
+        try{
+            const webby = (await axios.get(link))["data"]
+            return webby
+        } catch(err) {
             return err
         }
     }

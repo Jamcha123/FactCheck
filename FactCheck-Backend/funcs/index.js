@@ -8,12 +8,11 @@ import fs from 'fs'
 import { gemini15Flash, googleAI } from '@genkit-ai/googleai';
 import { genkit, z } from 'genkit';
 import { onCallGenkit } from 'firebase-functions/v2/https';
-import {
-  getFunctions,
-  httpsCallable,
-} from 'firebase/functions';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import {initializeApp} from 'firebase/app'
 import {Supadata} from '@supadata/js'
+import { YoutubeTranscript } from '@danielxceron/youtube-transcript'
+import {HttpsProxyAgent} from 'https-proxy-agent'
 
 dotenv.config()
 admin.initializeApp()
@@ -44,25 +43,6 @@ export const addCheckoutLink = functions.https.onRequest({cors: true, timeoutSec
     return res.status(200).send(session.url)
 })
 
-export const addCheckout = functions.https.onRequest({cors: true, timeoutSeconds: 3600}, async (req, res) => {
-
-    const session = await stripe.checkout.sessions.create({
-        line_items: [
-            {
-                price: "price_1U04YEIjUuQYDWzWlRJ7asdq",
-            }
-        ],
-        mode: "subscription",
-        automatic_tax: {enabled: true}, 
-        tax_id_collection: {enabled: true}, 
-        success_url: "https://addcustomers-z2v6b6ghoq-uc.a.run.app/?sessionId={CHECKOUT_SESSION_ID}", 
-        cancel_url: "https://addcustomer-7gne7wtmba-uc.a.run.app?sessionId={CHECKOUT_SESSION_ID}", 
-        currency: "usd"
-    })
-
-    return res.redirect(301, session.url)
-})
-
 export const addCustomers = functions.https.onRequest({cors: true, timeoutSeconds: 3600}, async (req, res) => {
     const {sessionId} = req.query
 
@@ -79,6 +59,89 @@ export const addCustomers = functions.https.onRequest({cors: true, timeoutSecond
     return res.status(200).send({"customer": "Your Customer UID Is " + getCheckoutSession.customer + ", Save It Somewhere Safe", "UID": getCheckoutSession.customer, "customer": updateCustomer})
 })
 
+export const checkout = functions.https.onRequest({cors: true, timeoutSeconds: 3600}, async (req, res) => {
+    const {user} = req.query
+
+    const session = await stripe.checkout.sessions.create({
+        metadata: {user: user},
+        line_items: [
+            {
+                price: "price_1UATZaIjUuQYDWzWL7OIlFXR",
+            }
+        ], 
+        mode: "subscription", 
+        success_url: "https://us-central1-factchecker-e23f1.cloudfunctions.net/addUIClient?token={CHECKOUT_SESSION_ID}", 
+        cancel_url: "https://factchecker-e23f1.web.app", 
+        currency: "usd",
+        tax_id_collection: {enabled: true}, 
+        automatic_tax: {enabled: true}, 
+        adaptive_pricing: {enabled: true}, 
+    })
+
+    return res.redirect(301, session.url)
+})
+
+export const addUIClient = functions.https.onRequest({cors: true, timeoutSeconds: 3600}, async (req, res) => {
+    const {token} = req.query
+
+    const getCheckout = await stripe.checkout.sessions.retrieve(token)
+
+    const getUser = getCheckout.metadata.user
+
+    const updateCustomer = await stripe.customers.update(getCheckout.customer, {
+        metadata: {
+            user: getUser, 
+            active: true, 
+            description: "subscribed to Fact Check Youtube critical thinker"
+        }
+    })
+
+    return res.redirect(301, "https://factchecker-e23f1.web.app")
+})
+
+export const addClientUsage = functions.https.onRequest({cors: true, timeoutSeconds: 3600}, async (req, res) => {
+    const {user} = req.query
+
+    let obj;
+    const clientList = (await stripe.customers.list()).data.map((e) => {if(e.metadata.user == user){obj = e; return e}; return null})
+
+    if(obj == null || obj == undefined){
+        return res.status(200).send("customer, not found")
+    }
+    
+    const addUsage = await stripe.billing.meterEvents.create({
+        event_name: "factcheck", 
+        payload: {
+            value: '1', 
+            stripe_customer_id: obj.id
+        }
+    })
+
+    return res.status(200).send({
+        "usage": addUsage, 
+        "summary": "Update Factcheck API Usage"
+    })
+})
+
+export const getClientUsage = functions.https.onRequest({cors: true, timeoutSeconds: 3600}, async (req, res) => {
+    const {user} = req.query
+
+    let obj;
+    const clientList = (await stripe.customers.list()).data.map((e) => {if(e.metadata.user == user){obj = e; return e}; return null})
+
+    const subscriptionList = (await stripe.subscriptions.list({status: "active", customer: obj.id})).data[0].id
+
+    const getUsageInvonce = await stripe.invoices.createPreview({
+        subscription: subscriptionList, 
+        customer: obj.id,
+    })
+
+    return res.status(200).send({
+        "invoice": getUsageInvonce, 
+        "customer": obj,
+    })
+})
+
 export const getUsage = functions.https.onRequest({cors: true}, async (req, res) => {
     const {customer} = req.query
 
@@ -91,6 +154,10 @@ export const getUsage = functions.https.onRequest({cors: true}, async (req, res)
             obj.push(get_customers[i])
             break
         }
+    }
+
+    if(obj.length == 0){
+        return res.status(200).send("No Customer Found With Customer UID Of " + customer)
     }
 
     const subscription = (await stripe.subscriptions.list({
@@ -275,19 +342,41 @@ export const factCheck = functions.https.onRequest({cors: true, timeoutSeconds: 
     return res.status(200).send(response.data)
 })
 
+export const getVideoTranscript = functions.https.onRequest({ cors: true }, async (req, res) => {
+    const { videoId } = req.query;
+
+    if (!videoId) {
+        return res.status(400).send({ error: "Missing videoId parameter" });
+    }
+
+    try {
+
+        const link = "https://transcriptapi.com/api/v2/youtube/transcript?video_url=" + videoId
+        const webby = (await axios.get(link, {headers: {Authorization: "Bearer " + process.env["TRANSYOUTUBE"]}}))["data"]["transcript"]
+
+        return res.status(200).send(webby.map((e) => {return e.text}).join(""))
+    } catch (err) {
+        return res.status(500).send({ 
+            error: "Failed to fetch transcript", 
+            message: err.message || String(err) 
+        });
+    }
+});
+
 const inputSchema = z.object({
+    transcript: z.string().describe("Text För Videon, Ta Hela Transcript Från Videon"),
     videoId: z.string().describe("Den Youtube Videon ID"), 
 })
 
 const outputSchema = z.object({
     title: z.string().describe("The Title Of The Youtube Video"), 
-    summary: z.array(z.string().describe("Några poänger som videon ta upp i en lite sammafattning som är minst 10 ord per poäng")).describe("Lista Av Alla 5 poäng sammafattade lista"), 
+    summary: z.array(z.string().describe("Sammafattningen av videons text och beskrivningar")).describe("Lista Av Alla 5 poäng sammafattade lista"), 
     pro: z.array(z.string().describe("En pro kort argument för videon")).describe("Lista Av 5 kort pro argument poäng för videon"),
     anti: z.array(z.string().describe("En emot kort argument för videon")).describe("Lista Av 5 kort emot argument poäng för videon"),
-    content: z.array(z.string().describe("Meningar eller premisener som saknar eller missar context, är missvisande, är fel eller saknar nyans och sa om det är sant eller fel eller behövs nyans och förklara lite varför och utgå från sök källor så att jag kan förstår")).describe("Lista Av Alla Meningar som är fel eller saknar context")
+    context: z.array(z.string().describe("var lite källkritisk och leta efter påstånnde som är fel, sant, behövs (eller sakna) nyans och utgå ifrån sök källor på nätet")).describe("Lista Av Alla Meningar som är fel eller saknar context"), 
 })
 
-const videoFlow = await models.defineFlow({
+const videoFlow = models.defineFlow({
     name: "videoFlow",
     inputSchema: inputSchema, 
     outputSchema: outputSchema
@@ -317,16 +406,7 @@ const videoFlow = await models.defineFlow({
 
     const search_data = await searcher_data
 
-    const supadata = new Supadata({
-        apiKey: process.env["SUPADATA"],
-    });
-
-    const transcriptResult = await supadata.transcript({
-        url: "https://www.youtube.com/watch?v=" + input.videoId,
-        text: true,
-    });
-
-    const prompt = "Summera Detta Youtube Video: " + title + " och sök källor: " + search_data + " med detta transcript: " + transcriptResult.content + " (respon i samma språk som video="
+    const prompt = "Summera Detta Youtube Video: " + title + " och sök källor: " + search_data + " med detta transcript: " + input.transcript + " (respon i samma språk som video transcript och title, så om i titel är i engelska, svarar på engelska eller om i svenska, svara på svenska)"
     
     const {output} = await models.generate({
         model: googleAI.model("gemini-3.6-flash"),
@@ -342,11 +422,10 @@ const videoFlow = await models.defineFlow({
 export const videoChecker = onCallGenkit(
     {
         memory: "4GiB", 
-        timeoutSeconds: 3600
+        timeoutSeconds: 3600, 
     },
     videoFlow
 )
-
 
 export const videoCallSummary = functions.https.onRequest({cors: true, memory: "4GiB", timeoutSeconds: 3600}, async (req, res) => {
     const {customer, videoId} = req.query
