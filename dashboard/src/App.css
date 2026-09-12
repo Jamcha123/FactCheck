@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+.container{
+  background-color: rgb(20, 20, 20);
+}
+
+.name, .description, .date, .price, #chatbot{
+  background-color: rgb(30, 30, 30);
+}
+
+#submit, #prompt{
+  background-color: rgb(40, 40, 40);
+}
+
+#videoId{
+  background-color: rgb(50, 50, 50);
+}
+
+.lists{
+  background-color: rgb(10, 10, 10);
+}
+
+#chatbox{
+  word-break: break-all;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  overflow-x: hidden;
+}
